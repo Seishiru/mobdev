@@ -8,18 +8,19 @@ import {
   Image,
 } from 'react-native';
 
-const SignIn = ({ navigation }) => {
+const SignUp = ({ navigation }) => {
+  const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSignIn = () => {
-    // For now, navigate directly to TodoPage
-    // Backend integration will be added later
-    navigation.navigate('TodoPage');
+  const handleSignUp = () => {
+    // Handle sign up logic here
+    console.log('Sign up pressed');
   };
 
-  const navigateToSignUp = () => {
-    navigation.navigate('SignUp');
+  const navigateToSignIn = () => {
+    navigation.navigate('SignIn');
   };
 
   return (
@@ -30,6 +31,13 @@ const SignIn = ({ navigation }) => {
         resizeMode="contain"
       />
       <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          placeholder="Username"
+          value={username}
+          onChangeText={setUsername}
+          autoCapitalize="none"
+        />
         <TextInput
           style={styles.input}
           placeholder="Email"
@@ -45,14 +53,21 @@ const SignIn = ({ navigation }) => {
           onChangeText={setPassword}
           secureTextEntry
         />
+        <TextInput
+          style={styles.input}
+          placeholder="Confirm password"
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+          secureTextEntry
+        />
       </View>
-      <TouchableOpacity style={styles.signInButton} onPress={handleSignIn}>
-        <Text style={styles.signInText}>Sign in</Text>
+      <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
+        <Text style={styles.signUpText}>Sign up</Text>
       </TouchableOpacity>
-      <View style={styles.signUpContainer}>
-        <Text style={styles.signUpText}>Don't have an account? </Text>
-        <TouchableOpacity onPress={navigateToSignUp}>
-          <Text style={styles.signUpLink}>Sign up</Text>
+      <View style={styles.signInContainer}>
+        <Text style={styles.signInText}>Already have an account? </Text>
+        <TouchableOpacity onPress={navigateToSignIn}>
+          <Text style={styles.signInLink}>Sign in</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -68,8 +83,8 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   logo: {
-    width: 400,
-    height: 400,
+    width: 350,
+    height: 350,
     marginBottom: 10,
   },
   inputContainer: {
@@ -86,7 +101,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
   },
-  signInButton: {
+  signUpButton: {
     width: '100%',
     height: 50,
     backgroundColor: '#FFD700',
@@ -95,24 +110,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-  signInText: {
+  signUpText: {
     fontSize: 18,
     fontWeight: 'bold',
     color: '#000',
   },
-  signUpContainer: {
+  signInContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  signUpText: {
+  signInText: {
     fontSize: 16,
     color: '#333',
   },
-  signUpLink: {
+  signInLink: {
     fontSize: 16,
     color: '#4169E1',
     fontWeight: 'bold',
   },
 });
 
-export default SignIn;
+export default SignUp;
