@@ -10,92 +10,129 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import styles from './TodoPageStyles'; // Assuming you have a separate file for styles
 
 const TodoPage = ({ navigation, route }) => {
   const [tasks, setTasks] = useState([]);
   const [isNewTaskModalVisible, setNewTaskModalVisible] = useState(false);
-  const [isEditModalVisible, setEditModalVisible] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDescription, setNewTaskDescription] = useState('');
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [editTaskTitle, setEditTaskTitle] = useState('');
-  const [editTaskDescription, setEditTaskDescription] = useState('');
-  const [completedTasks, setCompletedTasks] = useState([]);
 
-  // Handle incoming incomplete task from CompletedPage
+  // Fetch tasks from the backend when component mounts
   useEffect(() => {
-    if (route.params?.incompleteTask) {
-      setTasks([...tasks, route.params.incompleteTask]);
-      setCompletedTasks(route.params.updatedCompletedTasks);
-    }
-  }, [route.params?.incompleteTask]);
+    fetchTasks();
+  }, []);
 
-  const addTask = () => {
+  const fetchTasks = async () => {
+    try {
+      const response = await fetch('http://localhost/todo_api/getTasks.php'); // Replace with your server URL
+      const data = await response.json();
+
+      console.log("Fetched data: ", data); // Debugging statement to inspect fetched data
+
+      // Ensure the response is an array, default to empty array if it's not
+      setTasks(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+    }
+  };
+
+  const addTask = async () => {
     if (newTaskTitle.trim()) {
-      const newTask = {
-        id: Date.now().toString(),
+      const task = {
         title: newTaskTitle,
         description: newTaskDescription,
-        completed: false,
       };
-      setTasks([...tasks, newTask]);
-      setNewTaskTitle('');
-      setNewTaskDescription('');
-      setNewTaskModalVisible(false);
+
+      try {
+        const response = await fetch('http://localhost/todo_api/createTask.php', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(task),
+        });
+
+        const result = await response.json();
+
+        console.log("Task creation response: ", result); // Debugging statement to inspect task creation result
+
+        if (result.message) {
+          // Task successfully created, refresh task list
+          fetchTasks();
+          setNewTaskTitle('');
+          setNewTaskDescription('');
+          setNewTaskModalVisible(false);
+        } else {
+          console.error('Error creating task:', result.error);
+        }
+      } catch (error) {
+        console.error('Error creating task:', error);
+      }
     }
   };
 
-  const openEditModal = (task) => {
-    setSelectedTask(task);
-    setEditTaskTitle(task.title);
-    setEditTaskDescription(task.description);
-    setEditModalVisible(true);
-  };
-
-  const updateTask = () => {
-    if (editTaskTitle.trim()) {
-      const updatedTasks = tasks.map(task =>
-        task.id === selectedTask.id
-          ? { ...task, title: editTaskTitle, description: editTaskDescription }
-          : task
-      );
-      setTasks(updatedTasks);
-      setEditModalVisible(false);
-    }
-  };
-
-  const toggleComplete = (taskId) => {
-    const taskToComplete = tasks.find(task => task.id === taskId);
-    if (taskToComplete) {
-      // Remove from tasks
-      const updatedTasks = tasks.filter(task => task.id !== taskId);
-      setTasks(updatedTasks);
-
-      // Add to completed tasks
-      const completedTask = { ...taskToComplete, completed: true };
-      const updatedCompletedTasks = [...completedTasks, completedTask];
-      setCompletedTasks(updatedCompletedTasks);
-
-      // Navigate to CompletedPage with the updated lists
-      navigation.navigate('Completed', { 
-        completedTasks: updatedCompletedTasks 
+  const markTaskAsCompleted = async (taskId) => {
+    console.log('Marking task as completed. Task ID:', taskId);  // Debug: Check task ID passed
+  
+    try {
+      const response = await fetch('http://localhost/todo_api/check.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          task_id: taskId,
+          status: 'completed',
+        }),
       });
+  
+      console.log('Response from server:', response); // Debug: Check the raw response from the server
+  
+      const result = await response.json();
+      
+      console.log('Parsed response JSON:', result); // Debug: Check the JSON content after parsing
+  
+      if (result.message) {
+        console.log('Task marked as completed:', taskId); // Debug: Check if task was marked as completed
+  
+        // If task was successfully marked as completed, update the task in state
+        const updatedTasks = tasks.map((task) =>
+          task.id === taskId ? { ...task, status: 'completed' } : task
+        );
+        setTasks(updatedTasks);
+        
+        console.log('Updated tasks:', updatedTasks); // Debug: Check the updated tasks state
+  
+        // Optionally, send the updated tasks to the Completed tab
+        const completedTasks = updatedTasks.filter((task) => task.status === 'completed');
+        navigation.navigate('Completed', { completedTasks });
+      } else {
+        console.error('Error marking task as completed:', result.error);
+      }
+    } catch (error) {
+      console.error('Error updating task status:', error);
     }
-    setEditModalVisible(false);
   };
 
-  const deleteTask = (taskId) => {
-    const updatedTasks = tasks.filter(task => task.id !== taskId);
-    setTasks(updatedTasks);
-    setEditModalVisible(false);
-  };
+  const deleteTask = async (taskId) => {
+    try {
+      const response = await fetch(`http://localhost/todo_api/deleteTask.php?id=${taskId}`, {
+        method: 'GET', // Use GET method to send the task ID for deletion
+      });
 
-  const navigateToProfile = () => {
-    navigation.navigate('Profile');
-  };
+      const result = await response.json();
+      console.log("Task deletion response: ", result); // Debugging statement to inspect task deletion result
 
-  const navigateToCompleted = () => {
-    navigation.navigate('Completed', { completedTasks });
+      if (result.success) {
+        // Successfully deleted, remove the task from state
+        setTasks(tasks.filter(task => task.id !== taskId));
+      } else {
+        console.error('Error deleting task:', result.message);
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+    }
   };
 
   return (
@@ -111,30 +148,30 @@ const TodoPage = ({ navigation, route }) => {
       </View>
 
       <ScrollView style={styles.taskList}>
-        {tasks.map(task => (
-          <TouchableOpacity
-            key={task.id}
-            style={styles.taskItem}
-            onPress={() => openEditModal(task)}
-          >
-            <View style={styles.taskContent}>
-              <Text style={styles.taskTitle}>{task.title}</Text>
-              <Text style={styles.taskDescription}>{task.description}</Text>
+        {tasks.length > 0 ? (
+          tasks.map((task) => (
+            <View key={task.id} style={styles.taskItem}>
+              <View style={styles.taskContent}>
+                <Text style={styles.taskTitle}>{task.title}</Text>
+                <Text style={styles.taskDescription}>{task.description}</Text>
+              </View>
+              <View style={styles.taskActions}>
+                <TouchableOpacity onPress={() => markTaskAsCompleted(task.id)}>
+                  <Ionicons
+                    name={task.status === 'completed' ? 'checkmark-circle' : 'checkmark-circle-outline'}
+                    size={24}
+                    color={task.status === 'completed' ? '#4CAF50' : '#FFD700'}
+                  />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => deleteTask(task.id)}>
+                  <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
+                </TouchableOpacity>
+              </View>
             </View>
-            <View style={styles.taskActions}>
-              <TouchableOpacity onPress={() => toggleComplete(task.id)}>
-                <Ionicons
-                  name={task.completed ? "checkmark-circle" : "checkmark-circle-outline"}
-                  size={24}
-                  color={task.completed ? "#4CAF50" : "#FFD700"}
-                />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => deleteTask(task.id)}>
-                <Ionicons name="trash-outline" size={24} color="#FF6B6B" />
-              </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+          ))
+        ) : (
+          <Text style={styles.noTasksText}>No tasks available</Text>
+        )}
       </ScrollView>
 
       {/* New Task Modal */}
@@ -171,63 +208,20 @@ const TodoPage = ({ navigation, route }) => {
         </View>
       </Modal>
 
-      {/* Edit Task Modal */}
-      <Modal
-        visible={isEditModalVisible}
-        transparent
-        animationType="slide"
-      >
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Edit</Text>
-              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Ionicons name="close" size={24} color="#000" />
-              </TouchableOpacity>
-            </View>
-            <TextInput
-              style={styles.input}
-              placeholder="Title"
-              value={editTaskTitle}
-              onChangeText={setEditTaskTitle}
-            />
-            <TextInput
-              style={[styles.input, styles.textArea]}
-              placeholder="Detail/Description"
-              value={editTaskDescription}
-              onChangeText={setEditTaskDescription}
-              multiline
-            />
-            <TouchableOpacity style={styles.updateButton} onPress={updateTask}>
-              <Text style={styles.buttonText}>Update</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.completeButton}
-              onPress={() => toggleComplete(selectedTask?.id)}
-            >
-              <Text style={styles.buttonText}>Complete</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.deleteButton}
-              onPress={() => deleteTask(selectedTask?.id)}
-            >
-              <Text style={styles.buttonText}>Delete</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
-
       {/* Bottom Navigation */}
       <View style={styles.bottomNav}>
         <TouchableOpacity style={styles.navItem} onPress={() => {}}>
           <Ionicons name="list" size={24} color="#000" />
           <Text>To do</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={navigateToCompleted}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => navigation.navigate('Completed')}
+        >
           <Ionicons name="checkmark-circle" size={24} color="#000" />
           <Text>Completed</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.navItem} onPress={navigateToProfile}>
+        <TouchableOpacity style={styles.navItem} onPress={() => navigation.navigate('Profile')}>
           <Ionicons name="person" size={24} color="#000" />
           <Text>Profile</Text>
         </TouchableOpacity>
@@ -235,145 +229,5 @@ const TodoPage = ({ navigation, route }) => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#4A3780',
-  },
-  newTaskButton: {
-    backgroundColor: '#FFD700',
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 20,
-  },
-  newTaskButtonText: {
-    color: '#000',
-    fontWeight: '500',
-  },
-  taskList: {
-    flex: 1,
-    padding: 20,
-  },
-  taskItem: {
-    flexDirection: 'row',
-    backgroundColor: '#fff',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-    elevation: 3,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    marginBottom: 5,
-  },
-  taskDescription: {
-    color: '#666',
-  },
-  taskActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  modalContent: {
-    width: '80%',
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: '500',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 15,
-  },
-  textArea: {
-    height: 100,
-    textAlignVertical: 'top',
-  },
-  addButton: {
-    backgroundColor: '#FFD700',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  updateButton: {
-    backgroundColor: '#FFD700',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  completeButton: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  deleteButton: {
-    backgroundColor: '#FF6B6B',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addButtonText: {
-    color: '#000',
-    fontWeight: '500',
-  },
-  buttonText: {
-    color: '#fff',
-    fontWeight: '500',
-  },
-  bottomNav: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: 15,
-    backgroundColor: '#FFD700',
-    borderTopLeftRadius: 15,
-    borderTopRightRadius: 15,
-  },
-  navItem: {
-    alignItems: 'center',
-  },
-});
 
 export default TodoPage;

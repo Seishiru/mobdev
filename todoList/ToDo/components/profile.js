@@ -6,13 +6,38 @@ import {
   StyleSheet,
   Image,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Import AsyncStorage
 
 const Profile = ({ navigation }) => {
-  const handleSignOut = () => {
-    // Add sign out logic here later
-    navigation.navigate('SignIn');
+  const handleSignOut = async () => {
+    try {
+      // Send sign-out request to the backend
+      const response = await fetch('http://localhost/todo_api/signout.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        // Clear AsyncStorage (if used for session management)
+        await AsyncStorage.removeItem('user');
+
+        // Navigate to SignIn page after successful logout
+        navigation.navigate('SignIn');
+      } else {
+        // Handle any errors from the backend
+        Alert.alert('Error', data.message);
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+      Alert.alert('Error', 'An error occurred while logging out.');
+    }
   };
 
   return (

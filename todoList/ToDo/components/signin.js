@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,16 +6,58 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const SignIn = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSignIn = () => {
-    // For now, navigate directly to TodoPage
-    // Backend integration will be added later
-    navigation.navigate('TodoPage');
+  // Check if the user is already logged in
+  useEffect(() => {
+    const checkLoginStatus = async () => {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        navigation.navigate('TodoPage'); // If user is logged in, navigate to TodoPage
+      }
+    };
+    checkLoginStatus();
+  }, []);
+
+  const handleSignIn = async () => {
+    if (!email || !password) {
+      Alert.alert('Error', 'Please fill in both fields.');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost/todo_api/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (data.status === 'success') {
+        // Store user data in AsyncStorage
+        await AsyncStorage.setItem('user', JSON.stringify(data.user));
+
+        // Navigate to TodoPage after successful login
+        navigation.navigate('TodoPage');
+      } else {
+        Alert.alert('Error', data.message);
+      }
+    } catch (error) {
+      console.error('Error logging in:', error);
+      Alert.alert('Error', 'An error occurred while logging in.');
+    }
   };
 
   const navigateToSignUp = () => {

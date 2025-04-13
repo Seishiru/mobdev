@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   StyleSheet,
   Image,
+  Alert,
 } from 'react-native';
 
 const SignUp = ({ navigation }) => {
@@ -14,9 +15,39 @@ const SignUp = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
-  const handleSignUp = () => {
-    // Handle sign up logic here
-    console.log('Sign up pressed');
+  // Handle sign up logic
+  const handleSignUp = async () => {
+    if (password !== confirmPassword) {
+      Alert.alert('Error', 'Passwords do not match.');
+      return;
+    }
+
+    try {
+      // Create a FormData object to send data
+      const formData = new FormData();
+      formData.append('username', username);
+      formData.append('email', email);
+      formData.append('password', password);
+
+      // Send POST request to the backend
+      const response = await fetch('http://localhost/todo_api/signup.php', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.text();
+
+      // Check the response from the server
+      if (data === 'New user created successfully!') {
+        Alert.alert('Success', 'Account created successfully!');
+        navigation.navigate('SignIn');
+      } else {
+        Alert.alert('Error', data); // Show the error message from the backend
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      Alert.alert('Error', 'Something went wrong. Please try again.');
+    }
   };
 
   const navigateToSignIn = () => {
